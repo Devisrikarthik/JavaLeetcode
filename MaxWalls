@@ -1,0 +1,114 @@
+import java.util.Arrays;
+
+class Solution {
+    public int maxWalls(int[] robots, int[] distance, int[] walls) {
+        int n = robots.length;
+        
+
+        int[][] robs = new int[n][2];
+        for (int i = 0; i < n; i++) {
+            robs[i][0] = robots[i];
+            robs[i][1] = distance[i];
+        }
+        Arrays.sort(robs, (a, b) -> Integer.compare(a[0], b[0]));
+        Arrays.sort(walls);
+        
+
+        int baseWalls = 0;
+        int[] cleanWalls = new int[walls.length];
+        int cIdx = 0, rIdx = 0;
+        
+        for (int w : walls) {
+            while (rIdx < n && robs[rIdx][0] < w) {
+                rIdx++;
+            }
+            if (rIdx < n && robs[rIdx][0] == w) {
+                baseWalls++;
+            } else {
+                cleanWalls[cIdx++] = w; 
+            }
+        }
+        cleanWalls = Arrays.copyOf(cleanWalls, cIdx);
+        
+
+        int[][] gaps = new int[n + 1][];
+        int wIdx = 0;
+        for (int i = 0; i <= n; i++) {
+            int endX = (i == n) ? Integer.MAX_VALUE : robs[i][0];
+            int startW = wIdx;
+            while (wIdx < cleanWalls.length && cleanWalls[wIdx] < endX) {
+                wIdx++;
+            }
+            gaps[i] = Arrays.copyOfRange(cleanWalls, startW, wIdx);
+        }
+        
+        int[][] dp = new int[n][2];
+        
+
+        int limitL0 = robs[0][0] - robs[0][1];
+        dp[0][0] = calculateGapCoverage(gaps[0], 0, limitL0, false, true);
+        dp[0][1] = calculateGapCoverage(gaps[0], 0, 0, false, false);         
+        for (int i = 1; i < n; i++) {
+            int prevLimitR = robs[i - 1][0] + robs[i - 1][1]; 
+            int currLimitL = robs[i][0] - robs[i][1];
+            
+            int option1 = dp[i - 1][0] + calculateGapCoverage(gaps[i], 0, currLimitL, false, true);
+            int option2 = dp[i - 1][1] + calculateGapCoverage(gaps[i], prevLimitR, currLimitL, true, true);
+            dp[i][0] = Math.max(option1, option2);
+            
+            int option3 = dp[i - 1][0] + calculateGapCoverage(gaps[i], 0, 0, false, false);
+            int option4 = dp[i - 1][1] + calculateGapCoverage(gaps[i], prevLimitR, 0, true, false);
+            dp[i][1] = Math.max(option3, option4);
+        }
+        
+        int lastPrevLimitR = robs[n - 1][0] + robs[n - 1][1];
+        int finalAnsIfLastL = dp[n - 1][0] + calculateGapCoverage(gaps[n], 0, 0, false, false);
+        int finalAnsIfLastR = dp[n - 1][1] + calculateGapCoverage(gaps[n], lastPrevLimitR, 0, true, false);
+        
+        return Math.max(finalAnsIfLastL, finalAnsIfLastR) + baseWalls;
+    }
+    
+    private int calculateGapCoverage(int[] W, int limitR, int limitL, boolean hasR, boolean hasL) {
+        if (W.length == 0) return 0;
+        
+        int idxR = -1;
+        int idxL = W.length;
+        
+        if (hasR) {
+            idxR = upperBound(W, limitR) - 1;
+        }
+        if (hasL) {
+            idxL = lowerBound(W, limitL);
+        }
+        
+        int countR = idxR + 1;
+        int countL = W.length - idxL;
+        
+        int overlap = 0;
+        if (hasR && hasL) {
+            overlap = Math.max(0, idxR - idxL + 1);
+        }
+        
+        return countR + countL - overlap;
+    }
+    
+    private int upperBound(int[] arr, int target) {
+        int l = 0, r = arr.length;
+        while (l < r) {
+            int m = l + (r - l) / 2;
+            if (arr[m] <= target) l = m + 1;
+            else r = m;
+        }
+        return l;
+    }
+    
+    private int lowerBound(int[] arr, int target) {
+        int l = 0, r = arr.length;
+        while (l < r) {
+            int m = l + (r - l) / 2;
+            if (arr[m] < target) l = m + 1;
+            else r = m;
+        }
+        return l;
+    }
+}
